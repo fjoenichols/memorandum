@@ -6,7 +6,7 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
-    "types": ["vite/client", "vite-plugin-pwa/client"],
+    "types": ["vite/client", "vite-plugin-pwa/client", "pouchdb-core", "pouchdb-replication"],
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,

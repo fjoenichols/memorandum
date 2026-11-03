@@ -5,7 +5,7 @@
     "lib": ["ES2023", "DOM"],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "types": ["node"],
+    "types": ["node", "pouchdb-core", "pouchdb-replication"],
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,
@@ -15,5 +15,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["vite.config.ts", "vitest.config.ts", "playwright.config.ts", "eslint.config.js", "tests"]
+  "include": ["vite.config.ts", "vitest.config.ts", "playwright.config.ts", "eslint.config.js", "tests", "src/core"]
 }
