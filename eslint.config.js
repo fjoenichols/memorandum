@@ -19,4 +19,27 @@ export default tseslint.config(
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     },
   },
+  {
+    // Only the core may touch storage and collaboration internals; everything
+    // else goes through the core API.
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/core/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['yjs', 'pouchdb*', 'y-codemirror.next'],
+              message: 'Use the core API instead of touching Yjs or PouchDB directly.',
+            },
+            {
+              group: ['**/core/*', '!**/core/browser'],
+              message: 'Import from the core module itself, not its internals.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 )
