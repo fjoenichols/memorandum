@@ -151,4 +151,40 @@ describe('snapshots and compaction', () => {
     expect(b.space.readNote(id).body).toBe(first + second)
     expect(a.space.listSnapshots(id)).toHaveLength(5)
   })
+
+  it('compaction keeps the folder tree intact, including changes from a device that was offline', async () => {
+    const harness = await createHarness(2, manual)
+    const [a, b] = harness.devices
+    for (let i = 0; i < 10; i++) await a.space.createFolder(`Folder ${i}`)
+    await a.space.renameFolder('Folder 0', 'Renamed')
+    await a.space.moveFolder('Folder 1', 'Renamed')
+    const note = await a.space.createNote({ title: 'Inside', folder: 'Renamed/Folder 1' })
+    await harness.converge()
+
+    b.goOffline()
+    await b.space.createFolder('Made offline')
+    await b.space.deleteFolder('Folder 9')
+    await a.space.compact()
+    await a.space.createFolder('After compaction')
+
+    const state = await harness.converge()
+    expect(state.folders).toEqual([
+      'After compaction',
+      'Folder 2',
+      'Folder 3',
+      'Folder 4',
+      'Folder 5',
+      'Folder 6',
+      'Folder 7',
+      'Folder 8',
+      'Made offline',
+      'Renamed',
+      'Renamed/Folder 1',
+    ])
+    expect(state.noteFolders[note]).toBe('Renamed/Folder 1')
+
+    // A device that joins now builds the same tree from the snapshot.
+    const c = await harness.addDevice()
+    await expect.poll(() => JSON.stringify(c.state())).toBe(JSON.stringify(state))
+  })
 })

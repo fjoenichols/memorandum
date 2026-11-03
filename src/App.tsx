@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import type { Space } from './core'
 import { createBrowserCore } from './core/browser'
 import { NotesScreen } from './ui/NotesScreen'
+import { StorageWarning } from './ui/StorageWarning'
+import { UpdatePrompt } from './ui/UpdatePrompt'
 
 // Until sign-in and spaces exist, every device uses one local space.
 const SPACE_ID = 'space-local'
@@ -21,6 +23,8 @@ export function App() {
       <header className="header">
         <h1>Memorandum</h1>
       </header>
+      <UpdatePrompt />
+      <StorageWarning />
       {error ? <p role="alert">Couldn't open your notes: {error}</p> : space ? <NotesScreen space={space} /> : <p>Loading…</p>}
     </>
   )

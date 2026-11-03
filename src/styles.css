@@ -30,12 +30,30 @@ body {
   flex: 1;
   min-width: 0;
 }
+.sidebar form + form {
+  margin-top: 0.25rem;
+}
 .sidebar ul {
   list-style: none;
-  padding: 0;
+  padding: 0 0 0 0.9rem;
+  margin: 0;
 }
-.sidebar li button {
-  width: 100%;
+.sidebar .hint {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin: 0.4rem 0;
+}
+.sidebar .error {
+  font-size: 0.8rem;
+  color: #b91c1c;
+}
+.sidebar .row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.sidebar .row-label {
+  flex: 1;
   text-align: left;
   background: none;
   border: none;
@@ -43,8 +61,28 @@ body {
   border-radius: 4px;
   cursor: pointer;
 }
-.sidebar li button[aria-current='true'] {
+.sidebar .row-label[aria-current='true'] {
   background: #e5e7eb;
+}
+.sidebar .row.folder > .row-label {
+  font-weight: 600;
+}
+.sidebar .row-actions button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 0.2rem;
+}
+.sidebar .move-form {
+  display: flex;
+  gap: 0.25rem;
+  width: 100%;
+  padding: 0.2rem 0 0.4rem 0.4rem;
+}
+.sidebar .move-form select {
+  flex: 1;
+  min-width: 0;
 }
 .content {
   padding: 0.75rem 1rem;
@@ -56,4 +94,22 @@ body {
   margin: 0 0 0.5rem;
   font-size: 0.8rem;
   color: #6b7280;
+}
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+.banner p {
+  margin: 0;
+  flex: 1;
+}
+.banner-warning {
+  background: #fef3c7;
+}
+.banner-info {
+  background: #dbeafe;
 }
