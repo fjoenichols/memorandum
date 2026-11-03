@@ -1,1 +1,7 @@
 .claude
+node_modules
+dist
+dev-dist
+*.tsbuildinfo
+playwright-report
+test-results

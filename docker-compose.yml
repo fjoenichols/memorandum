@@ -1,0 +1,14 @@
+# Local CouchDB for development and tests. CI uses the same image and credentials.
+services:
+  couchdb:
+    image: couchdb:3.4
+    ports:
+      - "5984:5984"
+    environment:
+      COUCHDB_USER: admin
+      COUCHDB_PASSWORD: password
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:5984/_up"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
