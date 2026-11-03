@@ -57,3 +57,21 @@ body {
   font-size: 0.8rem;
   color: #6b7280;
 }
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+.banner p {
+  margin: 0;
+  flex: 1;
+}
+.banner-warning {
+  background: #fef3c7;
+}
+.banner-info {
+  background: #dbeafe;
+}

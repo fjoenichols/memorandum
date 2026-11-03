@@ -3,11 +3,14 @@ import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  define: {
+    __BUILD_ID__: JSON.stringify(process.env.VITE_BUILD_ID ?? new Date().toISOString()),
+  },
   plugins: [
     react(),
     VitePWA({
-      // A new service worker waits for the user to accept it; the app never
-      // reloads on its own mid-edit. The prompt UI arrives in a later ticket.
+      // A new service worker waits for the user to accept it (see UpdatePrompt);
+      // the app never reloads on its own mid-edit.
       registerType: 'prompt',
       injectRegister: false,
       workbox: {
