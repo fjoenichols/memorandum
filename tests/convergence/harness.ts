@@ -12,6 +12,10 @@ const couchUrl = new URL(process.env.COUCHDB_URL ?? 'http://admin:password@local
 /** What every device must agree on after sync. */
 export interface DeviceState {
   notes: { id: string; title: string; body: string }[]
+  /** Every folder path in the space, sorted. */
+  folders: string[]
+  /** Each note's folder path ('' is the top level), by note ID. */
+  noteFolders: Record<string, string>
 }
 
 export interface Device {
@@ -113,5 +117,11 @@ function stateOf(space: Space): DeviceState {
     .listNotes()
     .map((n) => ({ id: n.id, title: n.title, body: space.readNote(n.id).body }))
     .sort((a, b) => a.id.localeCompare(b.id))
-  return { notes }
+  const noteFolders = Object.fromEntries(
+    space
+      .listNotes()
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .map((n) => [n.id, n.folder]),
+  )
+  return { notes, folders: space.listFolders(), noteFolders }
 }
