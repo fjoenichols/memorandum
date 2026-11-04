@@ -16,7 +16,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "couchdb:up": "docker compose up -d --wait couchdb",
+    "couchdb:up": "docker compose up -d --wait couchdb && pnpm couchdb:setup",
+    "couchdb:setup": "node scripts/setup-couchdb.ts",
     "couchdb:down": "docker compose down"
   },
   "dependencies": {

@@ -1,7 +1,8 @@
-import { expect, test } from '@playwright/test'
+import { expect, signIn, test } from './support/users'
 
-test('a note written in the editor is still there after a reload', async ({ page }) => {
+test('a note written in the editor is still there after a reload', async ({ page, user }) => {
   await page.goto('/')
+  await signIn(page, user)
 
   await page.getByLabel('New note title').fill('Groceries')
   await page.getByRole('button', { name: 'Create note' }).click()

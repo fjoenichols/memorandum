@@ -4,6 +4,7 @@ const port = Number(process.env.E2E_PORT ?? 4173)
 
 export default defineConfig({
   testDir: './tests/e2e',
+  globalSetup: './tests/global-setup.ts',
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'github' : 'list',

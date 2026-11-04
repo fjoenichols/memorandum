@@ -85,7 +85,40 @@ export async function createHarness(count = 2, options: HarnessOptions = {}): Pr
   }
 }
 
-async function openDevice(spaceId: string, deviceId: string, options: HarnessOptions): Promise<Device> {
+/**
+ * Opens `count` devices on an existing space, syncing as a particular user
+ * (an `Authorization` header value). The space itself is left in place.
+ */
+export async function joinSpace(
+  spaceId: string,
+  authorization: string,
+  count = 1,
+  options: HarnessOptions = {},
+): Promise<{ devices: [Device, ...Device[]]; converge(): Promise<DeviceState> }> {
+  const open = () => openDevice(spaceId, `device-${crypto.randomUUID()}`, options, authorization)
+  const devices: [Device, ...Device[]] = [await open()]
+  for (let i = 1; i < count; i++) devices.push(await open())
+  onTestFinished(async () => {
+    for (const d of devices) await d.core.close()
+  })
+  return {
+    devices,
+    async converge() {
+      for (const d of devices) d.goOnline()
+      await expect
+        .poll(() => devices.map((d) => JSON.stringify(d.state())), { timeout: 20_000, interval: 100 })
+        .toSatisfy((states: string[]) => states.every((s) => s === states[0]))
+      return devices[0].state()
+    },
+  }
+}
+
+async function openDevice(
+  spaceId: string,
+  deviceId: string,
+  options: HarnessOptions,
+  authorization = authHeader(),
+): Promise<Device> {
   const start = async (online: boolean) => {
     const core = createCore({
       ...options,
@@ -96,7 +129,7 @@ async function openDevice(spaceId: string, deviceId: string, options: HarnessOpt
           skip_setup: true,
           fetch: (url, opts) => {
             const headers = new Headers(opts?.headers)
-            headers.set('Authorization', authHeader())
+            headers.set('Authorization', authorization)
             return PouchDB.fetch(url, { ...opts, headers })
           },
         }),
