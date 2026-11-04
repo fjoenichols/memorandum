@@ -36,6 +36,15 @@ export interface Note {
   body: string
 }
 
+/** A note in the space's trash. */
+export interface TrashedNote extends NoteSummary {
+  /** When the note was deleted, in milliseconds since the epoch. */
+  deletedAt: number
+}
+
+/** Notes stay in trash this long before they're purged automatically. */
+export const TRASH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000
+
 /** A programmatic edit to a note's body: delete then insert at `index`. */
 export interface BodyEdit {
   index: number
@@ -50,15 +59,21 @@ export class Space {
   private readonly pending = new Set<Promise<void>>()
   private storage!: SpaceStorage
 
-  constructor(readonly id: string) {}
+  /** `now` is the clock for creation, deletion, and purge times (injectable for tests). */
+  constructor(
+    readonly id: string,
+    private readonly now: () => number = Date.now,
+  ) {}
 
   /** @internal Called once by the core after storage is open. */
   attach(storage: SpaceStorage) {
     this.storage = storage
+    this.applyPurges()
   }
 
   /** @internal Applies an update read from storage. */
   receive(noteId: string, data: Uint8Array) {
+    if (noteId !== SPACE_DOC_ID && this.purgedMap().has(noteId)) return
     Y.applyUpdate(this.doc(noteId), data, FROM_STORAGE)
   }
 
@@ -71,7 +86,7 @@ export class Space {
       const meta = doc.getMap('meta')
       meta.set('title', validTitle)
       meta.set('folder', path)
-      meta.set('createdAt', Date.now())
+      meta.set('createdAt', this.now())
     })
     await this.flushed()
     return id
@@ -117,18 +132,19 @@ export class Space {
   }
 
   /**
-   * Deletes an empty folder. Folders that still hold notes or subfolders
-   * can't be deleted yet; that needs the trash.
+   * Deletes a folder and its subfolders. Their notes go to the trash, so
+   * nothing is lost; restoring a note brings its folder back.
    */
   async deleteFolder(path: string): Promise<void> {
     const folder = this.existingFolder(path, { allowTop: false })
-    if (this.listNotes().some((n) => isWithin(n.folder, folder))) {
-      throw new Error(`"${folder}" still has notes in it`)
+    const deletedAt = this.now()
+    for (const note of this.listNotes()) {
+      if (isWithin(note.folder, folder)) this.existing(note.id).getMap('meta').set('deleted', deletedAt)
     }
-    if (this.listFolders().some((f) => f !== folder && isWithin(f, folder))) {
-      throw new Error(`"${folder}" still has folders in it`)
-    }
-    this.folderMap().delete(folder)
+    const folders = this.folderMap()
+    folders.doc?.transact(() => {
+      for (const f of [...folders.keys()]) if (isWithin(f, folder)) folders.delete(f)
+    })
     await this.flushed()
   }
 
@@ -153,23 +169,65 @@ export class Space {
     await this.flushed()
   }
 
+  /**
+   * Puts a note in its space's trash. Nothing is erased: edits made to it
+   * meanwhile on other devices land in the trashed note, and it can be
+   * restored until it's purged.
+   */
+  async deleteNote(id: string): Promise<void> {
+    // One key holds the whole trash state (deletion time, or false), so a
+    // concurrent delete and restore resolve to one consistent answer.
+    this.existing(id).getMap('meta').set('deleted', this.now())
+    await this.flushed()
+  }
+
+  /** Takes a note back out of the trash, into its folder (recreated if it's gone). */
+  async restoreNote(id: string): Promise<void> {
+    const meta = this.existing(id).getMap('meta')
+    const folder = meta.get('folder')
+    const folders = this.folderMap()
+    folders.doc?.transact(() => {
+      if (typeof folder === 'string') for (const p of withAncestors(folder)) if (!folders.has(p)) folders.set(p, true)
+    })
+    meta.set('deleted', false)
+    await this.flushed()
+  }
+
+  /**
+   * Permanently removes a trashed note from every device, along with its
+   * stored history. Purge wins over everything else: edits or restores of
+   * the note that arrive later, from a device that was offline, are dropped.
+   */
+  async purgeNote(id: string): Promise<void> {
+    if (!this.listTrash().some((n) => n.id === id)) throw new Error('Only notes in the trash can be purged')
+    this.purgedMap().set(id, this.now())
+    await this.flushed()
+  }
+
+  /** Purges every note that has been in the trash for 30 days or more. */
+  async purgeExpired(): Promise<void> {
+    const cutoff = this.now() - TRASH_RETENTION_MS
+    const expired = this.listTrash().filter((n) => n.deletedAt <= cutoff)
+    if (expired.length === 0) return
+    const purged = this.purgedMap()
+    purged.doc?.transact(() => {
+      for (const note of expired) purged.set(note.id, this.now())
+    })
+    await this.flushed()
+  }
+
+  /** Notes in the space, not counting trashed ones. */
   listNotes(): NoteSummary[] {
-    const notes: NoteSummary[] = []
-    for (const [id, doc] of this.docs) {
-      const meta = doc.getMap('meta')
-      const title = meta.get('title')
-      const folder = meta.get('folder')
-      const createdAt = meta.get('createdAt')
-      if (typeof title === 'string') {
-        notes.push({
-          id,
-          title,
-          folder: typeof folder === 'string' ? folder : '',
-          createdAt: typeof createdAt === 'number' ? createdAt : 0,
-        })
-      }
-    }
-    return notes
+    return this.summaries()
+      .filter((n) => n.deletedAt === undefined)
+      .map(({ id, title, folder, createdAt }) => ({ id, title, folder, createdAt }))
+  }
+
+  /** Notes in the space's trash, most recently deleted first. */
+  listTrash(): TrashedNote[] {
+    return this.summaries()
+      .filter((n): n is TrashedNote => n.deletedAt !== undefined)
+      .sort((a, b) => b.deletedAt - a.deletedAt || a.id.localeCompare(b.id))
   }
 
   readNote(id: string): Note {
@@ -220,8 +278,48 @@ export class Space {
     return this.existing(id).getText('body')
   }
 
+  /** Every note in the space, live or trashed, with its deletion time if trashed. */
+  private summaries(): (NoteSummary & { deletedAt?: number })[] {
+    const notes: (NoteSummary & { deletedAt?: number })[] = []
+    for (const [id, doc] of this.docs) {
+      const meta = doc.getMap('meta')
+      const title = meta.get('title')
+      const folder = meta.get('folder')
+      const createdAt = meta.get('createdAt')
+      const deleted = meta.get('deleted')
+      if (typeof title === 'string') {
+        notes.push({
+          id,
+          title,
+          folder: typeof folder === 'string' ? folder : '',
+          createdAt: typeof createdAt === 'number' ? createdAt : 0,
+          ...(typeof deleted === 'number' ? { deletedAt: deleted } : {}),
+        })
+      }
+    }
+    return notes
+  }
+
   private folderMap(): Y.Map<boolean> {
     return this.doc(SPACE_DOC_ID).getMap('folders')
+  }
+
+  /** Purged note IDs and when they were purged. Kept forever, so late arrivals are recognized. */
+  private purgedMap(): Y.Map<number> {
+    return this.doc(SPACE_DOC_ID).getMap('purged')
+  }
+
+  /** Drops purged notes from memory and has storage remove their documents. */
+  private applyPurges() {
+    if (!this.storage) return
+    for (const id of this.purgedMap().keys()) {
+      const doc = this.docs.get(id)
+      if (doc) {
+        this.docs.delete(id)
+        doc.destroy()
+      }
+      this.storage.forget(id)
+    }
   }
 
   /** Normalizes a folder path and checks it exists ('' is the top level). */
@@ -285,6 +383,7 @@ export class Space {
       doc = new Y.Doc()
       doc.on('update', (update: Uint8Array, origin: unknown) => {
         if (origin !== FROM_STORAGE) this.track(this.storage.append(id, update))
+        if (id === SPACE_DOC_ID) this.applyPurges()
         this.notify()
       })
       this.docs.set(id, doc)

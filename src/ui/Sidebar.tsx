@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import type { NoteSummary, Space } from '../core'
+import { Trash } from './Trash'
 import { useFolders } from './useFolders'
 import { useNotes } from './useNotes'
 
@@ -77,6 +78,7 @@ export function Sidebar({ space, selectedNote, onSelectNote }: Props) {
               moveOptions={[TOP_LEVEL, ...folders]}
               onRename={(newName) => attempt(() => space.renameNote(note.id, newName))}
               onMove={(into) => attempt(() => space.moveNote(note.id, into))}
+              onDelete={() => attempt(() => space.deleteNote(note.id))}
             />
           </li>
         ))}
@@ -110,6 +112,7 @@ export function Sidebar({ space, selectedNote, onSelectNote }: Props) {
         Top level
       </button>
       {renderContents(TOP_LEVEL, 'Top level')}
+      <Trash space={space} />
     </nav>
   )
 }

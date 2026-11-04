@@ -1,11 +1,13 @@
 import { Space } from './space'
 import { SpaceStorage, type LocalDatabase, type RemoteDatabase } from './storage'
 
-export type { BodyEdit, Note, NoteSummary } from './space'
+export type { BodyEdit, Note, NoteSummary, TrashedNote } from './space'
+export { TRASH_RETENTION_MS } from './space'
 export type { SnapshotInfo } from './storage'
 export type { Space }
 
 const DEFAULT_SNAPSHOT_EVERY = 100
+const PURGE_CHECK_MS = 60 * 60 * 1000
 
 export interface CoreOptions {
   /** Stable ID for this device. */
@@ -19,6 +21,8 @@ export interface CoreOptions {
    * covered by one yet (default 100). `Infinity` turns automatic snapshots off.
    */
   snapshotEvery?: number
+  /** The clock for creation, deletion, and purge times (default `Date.now`; injectable for tests). */
+  now?: () => number
 }
 
 /** The core API: the only way the UI and feature modules reach notes. */
@@ -31,7 +35,7 @@ export interface Core {
 
 export function createCore(options: CoreOptions): Core {
   const { openRemote } = options
-  const open = new Map<string, { space: Space; storage: SpaceStorage }>()
+  const open = new Map<string, { space: Space; storage: SpaceStorage; purgeTimer: ReturnType<typeof setInterval> }>()
   let online = true
 
   return {
@@ -39,7 +43,7 @@ export function createCore(options: CoreOptions): Core {
       const existing = open.get(spaceId)
       if (existing) return existing.space
 
-      const space = new Space(spaceId)
+      const space = new Space(spaceId, options.now)
       const storage = await SpaceStorage.open(
         options.openLocal(spaceId),
         openRemote ? () => openRemote(spaceId) : undefined,
@@ -51,7 +55,11 @@ export function createCore(options: CoreOptions): Core {
       )
       space.attach(storage)
       storage.setOnline(online)
-      open.set(spaceId, { space, storage })
+      // Every device purges notes that have been in the trash 30 days, on open
+      // and hourly after. Purging twice is harmless, so no device is special.
+      await space.purgeExpired().catch(() => {})
+      const purgeTimer = setInterval(() => void space.purgeExpired().catch(() => {}), PURGE_CHECK_MS)
+      open.set(spaceId, { space, storage, purgeTimer })
       return space
     },
 
@@ -61,7 +69,10 @@ export function createCore(options: CoreOptions): Core {
     },
 
     async close() {
-      for (const { storage } of open.values()) await storage.close()
+      for (const { storage, purgeTimer } of open.values()) {
+        clearInterval(purgeTimer)
+        await storage.close()
+      }
       open.clear()
     },
   }

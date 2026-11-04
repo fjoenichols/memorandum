@@ -75,20 +75,23 @@ describe('folders', () => {
     expect(a.space.listFolders()).toEqual(['Recipes', 'Recipes/Desserts'])
   })
 
-  it('an empty folder can be deleted, but a folder with notes or subfolders cannot', async () => {
+  it('deleting a folder removes it and its subfolders and puts their notes in trash', async () => {
     const { devices, converge } = await createHarness(2)
     const [a] = devices
     await a.space.createFolder('Empty')
-    await a.space.createFolder('Full')
     await a.space.createFolder('Parent/Child')
-    await a.space.createNote({ title: 'Kept', folder: 'Full' })
+    await a.space.createFolder('Kept')
+    const inParent = await a.space.createNote({ title: 'In parent', folder: 'Parent' })
+    const inChild = await a.space.createNote({ title: 'In child', folder: 'Parent/Child' })
+    const kept = await a.space.createNote({ title: 'Elsewhere', folder: 'Kept' })
 
     await a.space.deleteFolder('Empty')
-    await expect(a.space.deleteFolder('Full')).rejects.toThrow()
-    await expect(a.space.deleteFolder('Parent')).rejects.toThrow()
+    await a.space.deleteFolder('Parent')
 
     const state = await converge()
-    expect(state.folders).toEqual(['Full', 'Parent', 'Parent/Child'])
+    expect(state.folders).toEqual(['Kept'])
+    expect(state.notes.map((n) => n.id)).toEqual([kept])
+    expect(state.trash.map((n) => n.id).sort()).toEqual([inParent, inChild].sort())
   })
 
   it('renames and moves made offline on one device show up identically on the other', async () => {

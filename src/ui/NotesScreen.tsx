@@ -2,11 +2,15 @@ import { useState } from 'react'
 import type { Space } from '../core'
 import { NoteEditor } from './NoteEditor'
 import { Sidebar } from './Sidebar'
+import { useNotes } from './useNotes'
 import { useHasUnsavedChanges } from './useSaveState'
 
 export function NotesScreen({ space }: { space: Space }) {
   const unsaved = useHasUnsavedChanges(space)
-  const [selected, setSelected] = useState<string>()
+  const [chosen, setSelected] = useState<string>()
+  // A note that's deleted (here or on another device) closes.
+  const notes = useNotes(space)
+  const selected = notes.some((n) => n.id === chosen) ? chosen : undefined
 
   return (
     <div className="layout">
