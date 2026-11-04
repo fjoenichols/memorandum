@@ -147,3 +147,80 @@ body {
 .banner-info {
   background: #dbeafe;
 }
+/* Reading view (#13) */
+.note-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
+}
+.note-toolbar button[aria-pressed='true'] {
+  background: #e5e7eb;
+}
+.reading-view {
+  max-width: 48rem;
+  line-height: 1.55;
+}
+.reading-view .properties {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+.reading-view .properties li {
+  display: flex;
+  gap: 1rem;
+}
+.reading-view .property-key {
+  min-width: 8rem;
+  color: #6b7280;
+}
+.reading-view .properties-error {
+  margin-bottom: 1rem;
+  color: #92400e;
+}
+.reading-view .wikilink {
+  color: #2563eb;
+}
+.reading-view .wikilink.unresolved {
+  color: #9ca3af;
+  text-decoration: underline dashed;
+  cursor: default;
+}
+.reading-view .callout {
+  margin: 1rem 0;
+  padding: 0.5rem 0.75rem;
+  border-left: 4px solid #3b82f6;
+  border-radius: 4px;
+  background: #eff6ff;
+}
+.reading-view .callout[data-callout='warning'],
+.reading-view .callout[data-callout='caution'],
+.reading-view .callout[data-callout='attention'] {
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+.reading-view .callout[data-callout='danger'],
+.reading-view .callout[data-callout='error'],
+.reading-view .callout[data-callout='bug'],
+.reading-view .callout[data-callout='failure'] {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+.reading-view .callout[data-callout='tip'],
+.reading-view .callout[data-callout='success'],
+.reading-view .callout[data-callout='check'],
+.reading-view .callout[data-callout='done'] {
+  border-color: #10b981;
+  background: #ecfdf5;
+}
+.reading-view .callout-title {
+  font-weight: 600;
+}
+.reading-view summary.callout-title {
+  cursor: pointer;
+}
+.reading-view .callout-content > :last-child {
+  margin-bottom: 0;
+}

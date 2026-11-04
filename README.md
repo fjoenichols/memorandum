@@ -38,6 +38,6 @@ Tests that need CouchDB read `COUCHDB_URL` (default `http://admin:password@local
 ## Code layout
 
 - `src/core/`: the core API. Storage, sync, Yjs notes, and the editor binding live here and nowhere else (enforced by lint).
-- `src/features/`: feature modules (for example `links/` for wikilinks), using only the core API. Anything they index is derived locally and never synced.
+- `src/features/`: feature modules (`links/` for wikilinks, `markdown/` for frontmatter and the reading view), using only the core API. Anything they index is derived locally and never synced.
 - `src/ui/`: React UI, using only the core API and feature modules.
 - `tests/convergence/`: the multi-device harness and scenarios S1–S11 against real CouchDB. Never weaken or skip these.
