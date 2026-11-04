@@ -26,6 +26,8 @@ export interface NoteSummary {
   title: string
   /** The note's folder path; '' is the top level of the space. */
   folder: string
+  /** When the note was created, in milliseconds since the epoch. */
+  createdAt: number
 }
 
 export interface Note {
@@ -157,7 +159,15 @@ export class Space {
       const meta = doc.getMap('meta')
       const title = meta.get('title')
       const folder = meta.get('folder')
-      if (typeof title === 'string') notes.push({ id, title, folder: typeof folder === 'string' ? folder : '' })
+      const createdAt = meta.get('createdAt')
+      if (typeof title === 'string') {
+        notes.push({
+          id,
+          title,
+          folder: typeof folder === 'string' ? folder : '',
+          createdAt: typeof createdAt === 'number' ? createdAt : 0,
+        })
+      }
     }
     return notes
   }
