@@ -3,6 +3,7 @@ import type { AuthUser } from './core'
 import { createBrowserAuth, rememberedUser } from './core/browser'
 import { AccountBar } from './ui/AccountBar'
 import { CreateUser } from './ui/CreateUser'
+import { ManageSpaces } from './ui/ManageSpaces'
 import { SignIn } from './ui/SignIn'
 import { SpaceScreen } from './ui/SpaceScreen'
 import { StorageWarning } from './ui/StorageWarning'
@@ -13,6 +14,8 @@ type Session = { status: 'checking' } | { status: 'signed-out' } | { status: 'si
 export function App() {
   const auth = useMemo(() => createBrowserAuth(), [])
   const [session, setSession] = useState<Session>({ status: 'checking' })
+  // Bumped when the owner changes shared spaces, so the space list refreshes at once.
+  const [spacesVersion, setSpacesVersion] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -63,7 +66,8 @@ export function App() {
       {session.status === 'signed-in' && (
         <>
           {session.user.isOwner && <CreateUser auth={auth} />}
-          <SpaceScreen key={session.user.personalSpaceId} spaceId={session.user.personalSpaceId} />
+          {session.user.isOwner && <ManageSpaces auth={auth} onChanged={() => setSpacesVersion((v) => v + 1)} />}
+          <SpaceScreen key={session.user.name} user={session.user} auth={auth} refreshKey={spacesVersion} />
         </>
       )}
     </>

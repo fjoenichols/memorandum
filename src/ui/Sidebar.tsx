@@ -10,12 +10,14 @@ interface Props {
   space: Space
   selectedNote?: string
   onSelectNote: (id: string) => void
+  /** Shown at the top of the sidebar, e.g. the space switcher. */
+  header?: ReactNode
 }
 
 const TOP_LEVEL = ''
 
 /** The current space's folder tree, with create, rename, move, and delete. */
-export function Sidebar({ space, selectedNote, onSelectNote }: Props) {
+export function Sidebar({ space, selectedNote, onSelectNote, header }: Props) {
   const notes = useNotes(space)
   const folders = useFolders(space)
   const [currentFolder, setCurrentFolder] = useState(TOP_LEVEL)
@@ -86,6 +88,7 @@ export function Sidebar({ space, selectedNote, onSelectNote }: Props) {
 
   return (
     <nav className="sidebar" aria-label="Notes">
+      {header}
       <CreateForm
         label="New note title"
         button="Create note"

@@ -25,6 +25,31 @@ const ownerAuth = createCouchDbAuth({
   },
 })
 
+/** Creates a shared space as the owner with these members, returning its ID. */
+export async function createSharedSpace(name: string, members: Credentials[]): Promise<string> {
+  const space = await ownerAuth.createSharedSpace(name)
+  for (const member of members) await ownerAuth.addMember(space.id, member.name)
+  return space.id
+}
+
+export async function removeMember(spaceId: string, member: Credentials) {
+  await ownerAuth.removeMember(spaceId, member.name)
+}
+
+/** Deletes every shared space with this name (test names are unique). */
+export async function removeSharedSpacesNamed(name: string) {
+  for (const space of await ownerAuth.listSharedSpaces()) {
+    if (space.name === name) {
+      await fetch(`${couchUrl.origin}/${space.id}`, { method: 'DELETE', headers: { Authorization: adminHeader } })
+    }
+  }
+}
+
+/** The space switcher in the sidebar. */
+export function spaceSwitcher(page: Page) {
+  return page.getByRole('combobox', { name: 'Space' })
+}
+
 export function uniqueName() {
   return `user-${crypto.randomUUID().slice(0, 8)}`
 }

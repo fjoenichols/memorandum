@@ -68,3 +68,23 @@ export async function removeUser(name: string) {
   }
   await fetch(`${couchOrigin}/${personalSpaceId(name)}`, { method: 'DELETE', headers })
 }
+
+/** Creates a shared space as the owner, adds `members`, and deletes the space after the test. */
+export async function newSharedSpace(name = `Shared ${crypto.randomUUID().slice(0, 8)}`, members: Credentials[] = []) {
+  const owner = ownerAuth()
+  const space = await owner.createSharedSpace(name)
+  onTestFinished(() => removeSharedSpace(space.id))
+  for (const member of members) await owner.addMember(space.id, member.name)
+  return space
+}
+
+export async function removeSharedSpace(id: string) {
+  await fetch(`${couchOrigin}/${id}`, { method: 'DELETE', headers: { Authorization: basicAuth(ownerCredentials) } })
+}
+
+/** Waits (briefly) until CouchDB answers `status` when this user reads the space, and returns the final answer. */
+export async function waitForAccess(spaceId: string, user: Credentials, status: number): Promise<number> {
+  const read = async () => (await fetch(`${couchOrigin}/${spaceId}`, { headers: { Authorization: basicAuth(user) } })).status
+  for (let i = 0; i < 50 && (await read()) !== status; i++) await new Promise((r) => setTimeout(r, 100))
+  return read()
+}

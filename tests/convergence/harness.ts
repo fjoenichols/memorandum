@@ -95,9 +95,22 @@ export async function joinSpace(
   count = 1,
   options: HarnessOptions = {},
 ): Promise<{ devices: [Device, ...Device[]]; converge(): Promise<DeviceState> }> {
-  const open = () => openDevice(spaceId, `device-${crypto.randomUUID()}`, options, authorization)
-  const devices: [Device, ...Device[]] = [await open()]
-  for (let i = 1; i < count; i++) devices.push(await open())
+  return joinSpaceAs(spaceId, [authorization, ...Array<string>(Math.max(0, count - 1)).fill(authorization)], options)
+}
+
+/**
+ * Opens one device per authorization on an existing space, so devices of
+ * different members (each syncing as that user) can converge together.
+ */
+export async function joinSpaceAs(
+  spaceId: string,
+  authorizations: [string, ...string[]],
+  options: HarnessOptions = {},
+): Promise<{ devices: [Device, ...Device[]]; converge(): Promise<DeviceState> }> {
+  const [first, ...rest] = authorizations
+  const open = (authorization: string) => openDevice(spaceId, `device-${crypto.randomUUID()}`, options, authorization)
+  const devices: [Device, ...Device[]] = [await open(first)]
+  for (const authorization of rest) devices.push(await open(authorization))
   onTestFinished(async () => {
     for (const d of devices) await d.core.close()
   })

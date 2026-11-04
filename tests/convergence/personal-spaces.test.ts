@@ -12,7 +12,7 @@ describe('sign-in and personal spaces', () => {
     expect(await auth.currentUser()).toBeNull()
 
     const user = await auth.signIn(alice.name, alice.password)
-    expect(user).toEqual({ name: alice.name, isOwner: false, personalSpaceId: personalSpaceId(alice.name) })
+    expect(user).toEqual({ name: alice.name, isOwner: false, personalSpaceId: personalSpaceId(alice.name), sharedSpaceIds: [] })
     expect(await auth.currentUser()).toEqual(user)
 
     await auth.signOut()
@@ -70,6 +70,7 @@ describe('sign-in and personal spaces', () => {
       name: ownerCredentials.name,
       isOwner: true,
       personalSpaceId: personalSpaceId(ownerCredentials.name),
+      sharedSpaceIds: [],
     })
 
     const { devices, converge } = await joinSpace(owner.personalSpaceId, basicAuth(ownerCredentials), 2)
