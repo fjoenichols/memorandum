@@ -2,7 +2,20 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// The app reaches CouchDB on its own origin under /couch, as Caddy serves it in
+// production, so session cookies work without CORS.
+const couchTarget = process.env.COUCHDB_PROXY_TARGET ?? 'http://localhost:5984'
+const proxy = {
+  '/couch': {
+    target: couchTarget,
+    changeOrigin: true,
+    rewrite: (path: string) => path.replace(/^\/couch/, ''),
+  },
+}
+
 export default defineConfig({
+  server: { proxy },
+  preview: { proxy },
   define: {
     __BUILD_ID__: JSON.stringify(process.env.VITE_BUILD_ID ?? new Date().toISOString()),
   },
@@ -16,6 +29,7 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
         navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/couch\//],
       },
       manifest: {
         name: 'Memorandum',
