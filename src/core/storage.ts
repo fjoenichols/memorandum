@@ -85,6 +85,11 @@ export class SpaceStorage {
   /** Update IDs whose content is in some snapshot, until their deletion arrives. */
   private readonly covered = new Set<string>()
   private readonly snapshots = new Map<string, SnapshotInfo[]>()
+  /** Snapshot documents present on this device, by note: ID → revision. */
+  private readonly snapshotRevs = new Map<string, Map<string, string>>()
+  /** Purged notes: their documents are removed on sight and never applied. */
+  private readonly purged = new Set<string>()
+  private readonly removals = new Set<Promise<unknown>>()
   private readonly compacting = new Map<string, Promise<void>>()
   private readonly scheduled = new Set<string>()
 
@@ -131,7 +136,7 @@ export class SpaceStorage {
 
   /** Snapshots and compacts every note that has updates not yet in a snapshot. */
   async compactAll(): Promise<void> {
-    const notes = [...this.updates.keys()].filter((noteId) => this.uncoveredCount(noteId) > 0)
+    const notes = [...this.updates.keys()].filter((noteId) => !this.purged.has(noteId) && this.uncoveredCount(noteId) > 0)
     await Promise.all(notes.map((noteId) => this.compact(noteId)))
   }
 
@@ -143,6 +148,19 @@ export class SpaceStorage {
   /** Number of update documents for a note currently stored on this device. */
   updateCount(noteId: string): number {
     return this.updates.get(noteId)?.size ?? 0
+  }
+
+  /**
+   * Permanently removes a purged note's update and snapshot documents from
+   * this device (deletions replicate), and removes any that arrive later.
+   * This is the one place snapshots are ever deleted.
+   */
+  forget(noteId: string) {
+    if (this.purged.has(noteId)) return
+    this.purged.add(noteId)
+    // The bookkeeping for these documents goes away as their deletions come
+    // back through the changes feed, so it always reflects what's stored.
+    this.remove([...(this.updates.get(noteId) ?? []), ...(this.snapshotRevs.get(noteId) ?? [])])
   }
 
   /** Starts or stops continuous two-way replication with the server. */
@@ -169,7 +187,18 @@ export class SpaceStorage {
     this.feed?.cancel()
     await this.writing
     await Promise.all(this.compacting.values())
+    await Promise.all(this.removals)
     await this.local.close()
+  }
+
+  /** Deletes documents by revision. A conflict means another device got there first, which is fine. */
+  private remove(docs: [id: string, rev: string][]) {
+    if (docs.length === 0 || this.closed) return
+    const removal = this.local
+      .bulkDocs(docs.map(([_id, _rev]) => ({ _id, _rev, _deleted: true })))
+      .catch(() => {})
+      .finally(() => this.removals.delete(removal))
+    this.removals.add(removal)
   }
 
   private async drain() {
@@ -286,7 +315,17 @@ export class SpaceStorage {
       if (parsed.kind === 'u') {
         this.updates.get(parsed.noteId)?.delete(doc._id)
         this.covered.delete(doc._id)
+      } else {
+        this.snapshotRevs.get(parsed.noteId)?.delete(doc._id)
+        const list = this.snapshots.get(parsed.noteId)
+        if (list) this.snapshots.set(parsed.noteId, list.filter((s) => s.id !== doc._id))
       }
+      return
+    }
+
+    if (this.purged.has(parsed.noteId)) {
+      // Late arrival for a purged note, e.g. from a device that was offline.
+      this.remove([[doc._id, doc._rev]])
       return
     }
 
@@ -300,6 +339,9 @@ export class SpaceStorage {
         list.push({ id: snapshot._id, deviceId: snapshot.deviceId, createdAt: snapshot.createdAt })
       }
       this.snapshots.set(parsed.noteId, list)
+      const revs = this.snapshotRevs.get(parsed.noteId) ?? new Map<string, string>()
+      revs.set(snapshot._id, doc._rev)
+      this.snapshotRevs.set(parsed.noteId, revs)
       for (const id of snapshot.covers) {
         const covered = parseDocId(id)
         if (covered) this.noteSeq(covered.deviceId, covered.seq)
@@ -311,6 +353,11 @@ export class SpaceStorage {
 
   /** Records an update document whose content is already applied to the note. */
   private recordUpdate(noteId: string, id: string, rev: string) {
+    if (this.purged.has(noteId)) {
+      this.remove([[id, rev]])
+      return
+    }
+    // (Purged notes are never recorded, so they're never snapshotted.)
     const revisions = this.updates.get(noteId) ?? new Map<string, string>()
     revisions.set(id, rev)
     this.updates.set(noteId, revisions)

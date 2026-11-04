@@ -16,6 +16,8 @@ export interface DeviceState {
   folders: string[]
   /** Each note's folder path ('' is the top level), by note ID. */
   noteFolders: Record<string, string>
+  /** Notes in the space's trash, sorted by note ID. */
+  trash: { id: string; title: string; body: string }[]
 }
 
 export interface Device {
@@ -37,7 +39,7 @@ export interface Harness {
 }
 
 /** Core options a test can override for every device. */
-export type HarnessOptions = Pick<CoreOptions, 'snapshotEvery'>
+export type HarnessOptions = Pick<CoreOptions, 'snapshotEvery' | 'now'>
 
 function authHeader() {
   const user = decodeURIComponent(couchUrl.username)
@@ -167,5 +169,9 @@ function stateOf(space: Space): DeviceState {
       .sort((a, b) => a.id.localeCompare(b.id))
       .map((n) => [n.id, n.folder]),
   )
-  return { notes, folders: space.listFolders(), noteFolders }
+  const trash = space
+    .listTrash()
+    .map((n) => ({ id: n.id, title: n.title, body: space.readNote(n.id).body }))
+    .sort((a, b) => a.id.localeCompare(b.id))
+  return { notes, folders: space.listFolders(), noteFolders, trash }
 }

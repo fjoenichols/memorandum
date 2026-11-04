@@ -147,3 +147,25 @@ body {
 .banner-info {
   background: #dbeafe;
 }
+.trash {
+  margin-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 0.5rem;
+}
+.trash-toggle {
+  background: none;
+  border: none;
+  padding: 0.3rem 0.4rem;
+  cursor: pointer;
+  color: #4b5563;
+}
+.trash-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  padding: 0.25rem 0;
+}
+.trash-title {
+  flex: 1;
+}
