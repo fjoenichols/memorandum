@@ -15,7 +15,7 @@ export function NotesScreen({ space }: { space: Space }) {
         <p className="save-state" role="status">
           {unsaved ? 'Saving…' : 'All changes saved'}
         </p>
-        {selected ? <NoteEditor key={selected} space={space} noteId={selected} /> : <p>Select or create a note.</p>}
+        {selected ? <NoteEditor key={selected} space={space} noteId={selected} onOpenNote={setSelected} /> : <p>Select or create a note.</p>}
       </main>
     </div>
   )

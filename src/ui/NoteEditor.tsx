@@ -1,9 +1,22 @@
 import { EditorView, basicSetup } from 'codemirror'
 import { useEffect, useRef } from 'react'
 import { noteEditorState, type Space } from '../core'
+import { wikilinkExtensions } from '../features/links'
 
-export function NoteEditor({ space, noteId }: { space: Space; noteId: string }) {
+interface Props {
+  space: Space
+  noteId: string
+  /** Opens another note, e.g. when a wikilink is followed. */
+  onOpenNote: (noteId: string) => void
+}
+
+export function NoteEditor({ space, noteId, onOpenNote }: Props) {
   const host = useRef<HTMLDivElement>(null)
+  // Read through a ref so a new callback doesn't rebuild the editor.
+  const openNote = useRef(onOpenNote)
+  useEffect(() => {
+    openNote.current = onOpenNote
+  }, [onOpenNote])
 
   useEffect(() => {
     if (!host.current) return
@@ -13,6 +26,7 @@ export function NoteEditor({ space, noteId }: { space: Space; noteId: string }) 
         basicSetup,
         EditorView.lineWrapping,
         EditorView.contentAttributes.of({ 'aria-label': 'Note body' }),
+        wikilinkExtensions({ space, openNote: (id) => openNote.current(id) }),
       ]),
     })
     return () => view.destroy()
