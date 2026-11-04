@@ -8,9 +8,11 @@ Requires Node 24+, pnpm, and Docker.
 
 ```sh
 pnpm install
-pnpm dev            # app at http://localhost:5173
-pnpm couchdb:up     # local CouchDB at http://localhost:5984 (admin / password)
+pnpm couchdb:up     # local CouchDB at http://localhost:5984 (admin / password), then runs couchdb:setup
+pnpm dev            # app at http://localhost:5173; sign in as admin / password
 ```
+
+`pnpm couchdb:setup` (safe to repeat) creates CouchDB's `_users` database and keeps sign-ins alive for 30 days. Run it once against any new CouchDB, with `COUCHDB_URL` pointing at it.
 
 ## Checks
 
@@ -25,9 +27,13 @@ CI runs all four on every push and pull request, with CouchDB as a service conta
 
 Tests that need CouchDB read `COUCHDB_URL` (default `http://admin:password@localhost:5984`).
 
-## Sync in the app
+## Accounts and sync
 
-Until sign-in arrives, the app keeps notes in one local space and only syncs if `VITE_COUCHDB_URL` is set at build time (for example `VITE_COUCHDB_URL=https://notes.example.com/couch`). The browser must be allowed to reach that URL, which the Caddy setup handles in production.
+- **The owner is the CouchDB server admin** (`COUCHDB_USER` / `COUCHDB_PASSWORD` in Docker). Sign in to the app with those credentials.
+- **Creating users:** the owner opens **Create a user** in the app and picks a user name and password. That creates the account and the user's personal space. Nobody can sign themselves up.
+- **Personal spaces:** each user gets one CouchDB database, `userdb-<user name in hex>`, whose security settings list only that user. The owner's personal space is created on their first sign-in.
+- **Same origin:** the app talks to CouchDB at `/couch` on its own origin, so sign-in cookies work without CORS. `vite dev` and `vite preview` proxy `/couch` to `COUCHDB_PROXY_TARGET` (default `http://localhost:5984`); Caddy does the same in production.
+- **Offline:** the last signed-in user's notes open without a network, and sync resumes when the connection returns.
 
 ## Code layout
 

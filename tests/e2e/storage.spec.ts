@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
+import { expect, signIn, test } from './support/users'
 
 /** Makes the browser answer persistent-storage requests the way we choose. */
 async function stubPersist(page: Page, answer: boolean | 'unsupported') {
@@ -18,17 +19,19 @@ async function stubPersist(page: Page, answer: boolean | 'unsupported') {
   }, answer)
 }
 
-test('asks for persistent storage and shows no warning when granted', async ({ page }) => {
+test('asks for persistent storage and shows no warning when granted', async ({ page, user }) => {
   await stubPersist(page, true)
   await page.goto('/')
+  await signIn(page, user)
   await expect(page.getByLabel('New note title')).toBeVisible()
   await expect.poll(() => page.evaluate(() => (window as unknown as { persistRequests: number }).persistRequests)).toBe(1)
   await expect(page.getByRole('complementary', { name: 'Storage warning' })).toHaveCount(0)
 })
 
-test('warns, without blocking, when persistent storage is denied', async ({ page }) => {
+test('warns, without blocking, when persistent storage is denied', async ({ page, user }) => {
   await stubPersist(page, false)
   await page.goto('/')
+  await signIn(page, user)
   const warning = page.getByRole('complementary', { name: 'Storage warning' })
   await expect(warning).toContainText('may clear')
 

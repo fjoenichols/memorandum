@@ -1,9 +1,11 @@
-import { expect, test, type Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
+import { expect, signIn, test } from './support/users'
 
 const contents = (page: Page, folder: string) => page.getByRole('list', { name: `${folder} contents`, exact: true })
 
-test('creating folders back to back keeps every one, including nested paths', async ({ page }) => {
+test('creating folders back to back keeps every one, including nested paths', async ({ page, user }) => {
   await page.goto('/')
+  await signIn(page, user)
   for (const name of ['Recipes', 'Recipes/Desserts', 'Work']) {
     await page.getByLabel('New folder name').fill(name)
     await page.getByRole('button', { name: 'Create folder' }).click()
@@ -12,8 +14,9 @@ test('creating folders back to back keeps every one, including nested paths', as
   await expect(contents(page, 'Recipes').getByRole('button', { name: 'Desserts', exact: true })).toBeVisible()
 })
 
-test('folders and notes can be created, renamed, moved, and deleted from the sidebar', async ({ page }) => {
+test('folders and notes can be created, renamed, moved, and deleted from the sidebar', async ({ page, user }) => {
   await page.goto('/')
+  await signIn(page, user)
 
   // Create a folder at the top level, then a note inside it.
   await page.getByLabel('New folder name').fill('Recipes')

@@ -68,3 +68,5 @@ export function createCore(options: CoreOptions): Core {
 }
 
 export { noteEditorState } from './editor'
+export { createCouchDbAuth, personalSpaceId, SignInError } from './auth'
+export type { AuthAdapter, AuthUser, CouchDbAuthOptions } from './auth'

@@ -149,7 +149,14 @@ export class SpaceStorage {
   setOnline(online: boolean) {
     if (online && !this.sync && this.openRemote) {
       // retry: true backs off and keeps retrying while the network is down.
-      this.sync = this.local.sync(this.openRemote(), { live: true, retry: true })
+      this.sync = this.local
+        .sync(this.openRemote(), { live: true, retry: true })
+        // Errors that stop sync (no access, expired session) must not crash
+        // the app; the notes stay usable locally. Showing them is the
+        // sync-status ticket's job.
+        .on('error', () => {
+          this.sync = undefined
+        })
     } else if (!online && this.sync) {
       this.sync.cancel()
       this.sync = undefined
