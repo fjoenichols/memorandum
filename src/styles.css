@@ -147,3 +147,25 @@ body {
 .banner-info {
   background: #dbeafe;
 }
+.space-switcher {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+  font-size: 0.85rem;
+}
+.space-switcher select {
+  flex: 1;
+  min-width: 0;
+}
+.manage-spaces {
+  padding: 0.25rem 1rem;
+}
+.manage-spaces ul ul {
+  margin: 0.25rem 0;
+}
+.manage-spaces .add-member {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}

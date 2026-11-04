@@ -3,12 +3,13 @@ import IdbAdapter from 'pouchdb-adapter-idb'
 import HttpAdapter from 'pouchdb-adapter-http'
 import Replication from 'pouchdb-replication'
 import { createCore, type Core } from '.'
-import { createCouchDbAuth, type AuthAdapter, type AuthUser } from './auth'
+import { createCouchDbAuth, type AuthAdapter, type AuthUser, type SpaceRef } from './auth'
 
 PouchDB.plugin(IdbAdapter).plugin(HttpAdapter).plugin(Replication)
 
 const DEVICE_ID_KEY = 'memorandum.deviceId'
 const USER_KEY = 'memorandum.user'
+const SPACES_KEY = 'memorandum.spaces'
 
 /** CouchDB, on the app's own origin (proxied by Vite in development and Caddy in production). */
 export function couchUrl(): string {
@@ -51,5 +52,19 @@ export const rememberedUser = {
   set(user: AuthUser | null) {
     if (user) localStorage.setItem(USER_KEY, JSON.stringify(user))
     else localStorage.removeItem(USER_KEY)
+  },
+}
+
+/** The spaces a user could open last time we checked, so the switcher works offline. */
+export const rememberedSpaces = {
+  get(userName: string): SpaceRef[] | null {
+    try {
+      return JSON.parse(localStorage.getItem(`${SPACES_KEY}.${userName}`) ?? 'null') as SpaceRef[] | null
+    } catch {
+      return null
+    }
+  },
+  set(userName: string, spaces: SpaceRef[]) {
+    localStorage.setItem(`${SPACES_KEY}.${userName}`, JSON.stringify(spaces))
   },
 }
