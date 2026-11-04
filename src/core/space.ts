@@ -9,7 +9,7 @@ import {
   validName,
   withAncestors,
 } from './folders'
-import type { SpaceStorage } from './storage'
+import type { SnapshotInfo, SpaceStorage } from './storage'
 
 /** Marks Yjs changes that came from storage, so they aren't written back. */
 const FROM_STORAGE = Symbol('from-storage')
@@ -179,6 +179,30 @@ export class Space {
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener)
     return () => this.listeners.delete(listener)
+  }
+
+  /**
+   * Snapshots every note with updates not yet in a snapshot, then removes the
+   * update documents each snapshot covers. This also happens automatically as
+   * notes grow; call it directly to compact now.
+   */
+  compact(): Promise<void> {
+    return this.storage.compactAll()
+  }
+
+  /** Snapshots stored for a note, oldest first. Kept for version history. */
+  listSnapshots(id: string): SnapshotInfo[] {
+    return this.storage.listSnapshots(id)
+  }
+
+  /** How many update documents for a note this device currently stores (diagnostic). */
+  storedUpdateCount(id: string): number {
+    return this.storage.updateCount(id)
+  }
+
+  /** @internal The note's full state, for the storage module's snapshots. */
+  encodeState(id: string): Uint8Array {
+    return Y.encodeStateAsUpdate(this.existing(id))
   }
 
   /** @internal The note's body as Yjs text, for the core's editor binding only. */

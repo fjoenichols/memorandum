@@ -2,7 +2,10 @@ import { Space } from './space'
 import { SpaceStorage, type LocalDatabase, type RemoteDatabase } from './storage'
 
 export type { BodyEdit, Note, NoteSummary } from './space'
+export type { SnapshotInfo } from './storage'
 export type { Space }
+
+const DEFAULT_SNAPSHOT_EVERY = 100
 
 export interface CoreOptions {
   /** Stable ID for this device. */
@@ -11,6 +14,11 @@ export interface CoreOptions {
   openLocal: (name: string) => LocalDatabase
   /** Opens the server's database with the given name. Without it, spaces never sync. */
   openRemote?: (name: string) => RemoteDatabase
+  /**
+   * Write a snapshot of a note once this many of its update documents aren't
+   * covered by one yet (default 100). `Infinity` turns automatic snapshots off.
+   */
+  snapshotEvery?: number
 }
 
 /** The core API: the only way the UI and feature modules reach notes. */
@@ -35,8 +43,11 @@ export function createCore(options: CoreOptions): Core {
       const storage = await SpaceStorage.open(
         options.openLocal(spaceId),
         openRemote ? () => openRemote(spaceId) : undefined,
-        options.deviceId,
-        (noteId, data) => space.receive(noteId, data),
+        { deviceId: options.deviceId, snapshotEvery: options.snapshotEvery ?? DEFAULT_SNAPSHOT_EVERY },
+        {
+          onUpdate: (noteId, data) => space.receive(noteId, data),
+          encodeNote: (noteId) => space.encodeState(noteId),
+        },
       )
       space.attach(storage)
       storage.setOnline(online)

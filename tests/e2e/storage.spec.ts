@@ -35,7 +35,7 @@ test('warns, without blocking, when persistent storage is denied', async ({ page
   // The app stays usable while the warning shows.
   await page.getByLabel('New note title').fill('Still works')
   await page.getByRole('button', { name: 'Create note' }).click()
-  await expect(page.getByRole('button', { name: 'Still works' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Still works', exact: true })).toBeVisible()
 
   await warning.getByRole('button', { name: 'Dismiss' }).click()
   await expect(warning).toHaveCount(0)

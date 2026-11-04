@@ -3,7 +3,7 @@ import HttpAdapter from 'pouchdb-adapter-http'
 import MemoryAdapter from 'pouchdb-adapter-memory'
 import Replication from 'pouchdb-replication'
 import { expect, onTestFinished } from 'vitest'
-import { createCore, type Core, type Space } from '../../src/core'
+import { createCore, type Core, type CoreOptions, type Space } from '../../src/core'
 
 PouchDB.plugin(MemoryAdapter).plugin(HttpAdapter).plugin(Replication)
 
@@ -32,7 +32,12 @@ export interface Harness {
   devices: [Device, Device, ...Device[]]
   /** Bring every device online and wait until they all hold identical state. */
   converge(): Promise<DeviceState>
+  /** Adds a new device with empty storage, online. It joins `devices`. */
+  addDevice(): Promise<Device>
 }
+
+/** Core options a test can override for every device. */
+export type HarnessOptions = Pick<CoreOptions, 'snapshotEvery'>
 
 function authHeader() {
   const user = decodeURIComponent(couchUrl.username)
@@ -49,12 +54,12 @@ async function couch(path: string, method: string) {
  * Creates a fresh space on the real CouchDB and `count` simulated devices,
  * each with its own in-memory PouchDB, all starting online.
  */
-export async function createHarness(count = 2): Promise<Harness> {
+export async function createHarness(count = 2, options: HarnessOptions = {}): Promise<Harness> {
   if (count < 2) throw new Error('A convergence test needs at least two devices')
   const spaceId = `test-${crypto.randomUUID()}`
   await couch(spaceId, 'PUT')
 
-  const open = () => openDevice(spaceId, `device-${crypto.randomUUID()}`)
+  const open = () => openDevice(spaceId, `device-${crypto.randomUUID()}`, options)
   const devices: Harness['devices'] = [await open(), await open()]
   for (let i = 2; i < count; i++) devices.push(await open())
 
@@ -72,12 +77,18 @@ export async function createHarness(count = 2): Promise<Harness> {
         .toSatisfy((states: string[]) => states.every((s) => s === states[0]))
       return devices[0].state()
     },
+    async addDevice() {
+      const device = await open()
+      devices.push(device)
+      return device
+    },
   }
 }
 
-async function openDevice(spaceId: string, deviceId: string): Promise<Device> {
+async function openDevice(spaceId: string, deviceId: string, options: HarnessOptions): Promise<Device> {
   const start = async (online: boolean) => {
     const core = createCore({
+      ...options,
       deviceId,
       openLocal: (name) => new PouchDB(`${deviceId}-${name}`, { adapter: 'memory' }),
       openRemote: (name) =>
