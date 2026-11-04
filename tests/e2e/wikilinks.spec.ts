@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
+import { expect, signIn, test } from './support/users'
 
 async function createNote(page: Page, title: string, body = '') {
   await page.getByLabel('New note title').fill(title)
@@ -15,8 +16,9 @@ const editor = (page: Page) => page.getByRole('textbox', { name: 'Note body' })
 /** The note the sidebar marks as open. */
 const selectedNote = (page: Page) => page.locator('.row.note > [aria-current="true"]')
 
-test('typing [[ suggests titles from the space, and picking one inserts the link', async ({ page }) => {
+test('typing [[ suggests titles from the space, and picking one inserts the link', async ({ page, user }) => {
   await page.goto('/')
+  await signIn(page, user)
   await createNote(page, 'Groceries', 'milk and eggs')
   await createNote(page, 'Garden plan')
   await createNote(page, 'Plan')
@@ -37,8 +39,9 @@ test('typing [[ suggests titles from the space, and picking one inserts the link
   await expect(editor(page)).toHaveText('Buy [[Groceries]] today')
 })
 
-test('when a title repeats across folders, picking one inserts its folder path so the link stays exact', async ({ page }) => {
+test('when a title repeats across folders, picking one inserts its folder path so the link stays exact', async ({ page, user }) => {
   await page.goto('/')
+  await signIn(page, user)
   await page.getByLabel('New folder name').fill('Recipes')
   await page.getByRole('button', { name: 'Create folder' }).click()
   await page.getByRole('button', { name: 'Recipes', exact: true }).click()
@@ -56,8 +59,9 @@ test('when a title repeats across folders, picking one inserts its folder path s
   await expect(editor(page)).toHaveText('chocolate')
 })
 
-test('tapping the open button on a link, or Ctrl/Cmd-clicking it, opens the linked note', async ({ page }) => {
+test('tapping the open button on a link, or Ctrl/Cmd-clicking it, opens the linked note', async ({ page, user }) => {
   await page.goto('/')
+  await signIn(page, user)
   await createNote(page, 'Groceries', 'milk and eggs')
   await createNote(page, 'Plan', 'See [[groceries|the list]] and [[Nowhere]].')
 
@@ -73,8 +77,9 @@ test('tapping the open button on a link, or Ctrl/Cmd-clicking it, opens the link
   await expect(selectedNote(page)).toHaveText('Groceries')
 })
 
-test('a plain click on a link places the cursor for editing instead of navigating', async ({ page }) => {
+test('a plain click on a link places the cursor for editing instead of navigating', async ({ page, user }) => {
   await page.goto('/')
+  await signIn(page, user)
   await createNote(page, 'Groceries')
   await createNote(page, 'Plan', 'See [[Groceries]]')
 
